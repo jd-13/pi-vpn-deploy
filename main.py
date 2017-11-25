@@ -48,7 +48,9 @@ def initServer(serverName):
     bashShell = subprocess.Popen(["sudo", "/bin/bash"],
                                  stdin=subprocess.PIPE,
                                  stdout=subprocess.PIPE)
-    bashShell.communicate(COMMAND_PREFIX.encode("utf-8") + b" && ./clean-all && ./pkitool --initca && ./pkitool --server " + serverName.encode("utf-8") + b"\n")
+    bashShell.communicate(COMMAND_PREFIX.encode("utf-8") \
+                          + b" && ./clean-all && ./pkitool --initca && ./pkitool --server " \
+                          + serverName.encode("utf-8") + b"\n")
 
 initServer(SERVER_NAME)
 
@@ -75,7 +77,8 @@ print("\n\n===BUILDING DH AND GENERATING HMAC===")
 bashShell = subprocess.Popen(["sudo", "/bin/bash"],
                              stdin=subprocess.PIPE,
                              stdout=subprocess.PIPE)
-bashShell.communicate(COMMAND_PREFIX.encode("utf-8") + b" && ./build-dh && openvpn --genkey --secret keys/ta.key\n")
+bashShell.communicate(COMMAND_PREFIX.encode("utf-8") \
+                      + b" && ./build-dh && openvpn --genkey --secret keys/ta.key\n")
 
 print("\n\n===GENERATING server.conf===")
 LOCAL_IP = input("Your Pi's local IP address (something like 192.168.0.x):")
@@ -130,6 +133,7 @@ def genServerConf(serverName, localIp):
 genServerConf(SERVER_NAME, LOCAL_IP)
 
 def updateSysCtl():
+    """Updates the file /etc/sysctl.conf to set net.ipv4.ip_forward=1"""
     print("\n\n===ENABLING FORWARDING IN /etc/sysctl.conf===")
 
     FILE_NAME = "/etc/sysctl.conf"
