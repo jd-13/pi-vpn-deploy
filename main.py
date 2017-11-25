@@ -1,9 +1,10 @@
 #https://readwrite.com/2014/04/10/raspberry-pi-vpn-tutorial-server-secure-web-browsing/
 #TODO: Remove use of os.system
 
+import hashlib
 import os
-import getpass
 import subprocess
+import sys
 
 print("This script is required to be ran as the root user.")
 print("Steps you will need to take after running this script:")
@@ -60,7 +61,9 @@ def initKeys():
         bashShell = subprocess.Popen(["sudo", "/bin/bash"],
                                      stdin=subprocess.PIPE,
                                      stdout=subprocess.PIPE)
-        bashShell.communicate(COMMAND_PREFIX.encode("utf-8") + b" && ./pkitool --pass " + keyName.encode("utf-8") + b"\n")
+        bashShell.communicate(COMMAND_PREFIX.encode("utf-8") \
+                              + b" && ./pkitool --pass " \
+                              + keyName.encode("utf-8") + b"\n")
 
     print("Use the same password as before for each of the following")
     for keyName in KEY_NAMES:
@@ -208,8 +211,34 @@ def prepKeyFileGeneration():
         f.write("verb 1")
         f.write("mute 20")
 
+    # To generate our keys we need to use someone else's script from github
+    print("Downloading key generation script from gist...")
     MAKEOPENVPN_PATH = "https://gist.githubusercontent.com/laurenorsini/10013430/raw/df70eae7b573aaa16c417bc54c2e0c03303501e6/MakeOpenVPN.sh"
-    os.system("cd /etc/openvpn/easy-rsa/keys && wget --cut-dirs=4 {0} && chmod 700 MakeOVPN.sh && ./MakeOVPN.sh".format(MAKEOPENVPN_PATH))
+    MAKEOPENVPN_FILENAME = "MakeOpenVPN.sh"
+    os.system("cd /etc/openvpn/easy-rsa/keys && wget --cut-dirs=4 {0}".format(MAKEOPENVPN_PATH))
+
+    # Check the hash of the downloaded file against a hash that was computed earlier to make sure
+    # we're not just executing arbitrary code
+    downloadedHash = hashlib.sha256()
+    with open("etc/openvpn/easy-rsa/keys/{0}".format(MAKEOPENVPN_FILENAME), "rb", buffering=0) as f:
+        for buffer in iter(lambda: f.read(128 * 1024), b''):
+            downloadedHash.update(buffer)
+
+    correctHash = "74378b0e65c4708285e16b98ffcecbb53fa8f107cce6bbbcac79a645a61c1893"
+
+    # If the hash is wrong alert the user and give them the option to exit
+    if correctHash is not downloadedHash.hexdigest():
+        print("The downloaded key generation script does not match the expected hash.")
+        print("This may mean the file has been tampered with, or simply updated.")
+        print("If you are comfortable reading bash scripts, review the file at")
+        print("/etc/openvpn/easy-rsa/keys/{0} to check for anything malicious.".format(MAKEOPENVPN_FILENAME))
+        print("Please raise an issue on my github and I'll update the hash if necessary.")
+        inputChar = input("Enter 'y' if you have verified that the file is safe and wish to continue, or any other character to exit:")
+
+        if inputChar.lower() is not "y":
+            sys.exit(1)
+
+    os.system("cd /etc/openvpn/easy-rsa/keys && chmod 700 {0} && ./{0}".format(MAKEOPENVPN_FILENAME))
 
 prepKeyFileGeneration()
 
